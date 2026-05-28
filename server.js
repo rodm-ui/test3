@@ -3,7 +3,7 @@ import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import path from 'path';
 
-dotenv.config(); // only call this once
+dotenv.config();
 
 const app = express();
 app.use(express.json());
@@ -27,7 +27,6 @@ app.use(async (req, res, next) => {
   const endpoint = req.originalUrl;
   const method = req.method;
 
-  // log only after response finished
   res.on('finish', async () => {
     const statusCode = res.statusCode;
     if (!endpoint.includes('/api/system-logs')) {
@@ -47,7 +46,7 @@ app.use(async (req, res, next) => {
 // API: products
 app.get('/api/products', async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT * FROM products ORDER BY createdAt DESC');
+    const [rows] = await pool.execute('SELECT * FROM products ORDER BY id DESC');
     res.json({ products: rows });
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch products' });
@@ -57,7 +56,7 @@ app.get('/api/products', async (req, res) => {
 // API: categories
 app.get('/api/categories', async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT * FROM categories');
+    const [rows] = await pool.execute('SELECT * FROM categories ORDER BY id DESC');
     res.json({ categories: rows });
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch categories' });
@@ -67,7 +66,7 @@ app.get('/api/categories', async (req, res) => {
 // API: orders GET
 app.get('/api/orders', async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT * FROM orders ORDER BY createdAt DESC');
+    const [rows] = await pool.execute('SELECT * FROM orders ORDER BY id DESC');
     res.json({ orders: rows });
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch orders' });
@@ -89,7 +88,6 @@ app.post('/api/orders', async (req, res) => {
     );
     const orderId = result.insertId;
 
-    // insert order items
     for (const item of items) {
       await pool.execute(
         'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)',
@@ -117,7 +115,7 @@ app.get('/api/system-logs', async (req, res) => {
   }
 });
 
-// SSE stream for real-time logs
+// SSE stream
 app.get('/api/system-logs/stream', async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
