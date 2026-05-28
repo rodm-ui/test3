@@ -2,9 +2,9 @@ import express from 'express';
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import path from 'path';
-import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config(); // only call this once
+
 const app = express();
 app.use(express.json());
 app.use(express.static(path.resolve(process.cwd(), 'dist')));
