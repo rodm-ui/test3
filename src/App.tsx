@@ -1,4 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import axios from 'axios';
+import { Product, OrderItem } from './types';
+
+export default function App() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [cartItems, setCartItems] = useState<OrderItem[]>([]);
+
   const addToCart = (product: Product) => {
     setCartItems(prev => {
       const exist = prev.find(i => i.productId === product.id);
