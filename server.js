@@ -2,6 +2,7 @@ import express from 'express';
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import path from 'path';
+import dotenv from 'dotenv';
 
 dotenv.config();
 const app = express();
