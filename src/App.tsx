@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { Product, Category, Order, OrderItem, PaymentMethod, OrderType } from "./types";
 
@@ -58,7 +58,10 @@ export default function App() {
             : i
         );
       }
-      return [...prev, { productId: product.id, quantity: 1, unitPricePhp: product.price }];
+      return [
+        ...prev,
+        { productId: product.id, quantity: 1, unitPricePhp: product.price },
+      ];
     });
   };
 
@@ -79,11 +82,32 @@ export default function App() {
     }
   };
 
+  // sort featured products first
+  const sortedProducts = useMemo(() => {
+    return [...products].sort((a, b) => (a.isFeatured ? -1 : 1));
+  }, [products]);
+
   return (
     <div className="min-h-screen bg-rose-50 p-4">
-      <h1 className="text-2xl font-bold mb-4">Featured Bouquets</h1>
+      {/* Admin Dashboard Top Bar */}
+      <header className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <span className="rounded-full bg-rose-500 w-6 h-6 flex items-center justify-center text-white">🌸</span>
+            BlooMery Flower Shop
+          </h1>
+          <p className="text-sm text-slate-600">Fresh, hand-tied bouquets for every story you want to tell.</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-sm">Signed in as <strong>BlooMery Admin</strong></span>
+          <button className="text-rose-600 border border-rose-600 px-3 py-1 rounded">Log out</button>
+        </div>
+      </header>
+
+      {/* Featured Bouquets */}
+      <h2 className="text-2xl font-bold mb-4">Featured Bouquets</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {products.map((product) => (
+        {sortedProducts.map((product) => (
           <div key={product.id} className="rounded-2xl bg-white shadow p-3 flex flex-col">
             <img
               src={product.image_url}
@@ -105,6 +129,7 @@ export default function App() {
         ))}
       </div>
 
+      {/* Cart / Order Summary */}
       {cartItems.length > 0 && (
         <div className="fixed bottom-4 right-4 bg-white shadow rounded p-4 w-80">
           <h2 className="text-xs font-semibold mb-2">Order Summary</h2>
