@@ -23,28 +23,24 @@ const pool = mysql.createPool({
 
 // middleware to log requests to DB
 app.use(async (req, res, next) => {
-  const originalSend = res.send;
-  res.send = function (body) {
-    res.send = originalSend;
-    (async () => {
-      try {
-        const actor = req.body?.email || 'System / Visitor';
-        const endpoint = req.originalUrl;
-        const method = req.method;
-        const statusCode = res.statusCode;
+  const actor = req.body?.email || 'System / Visitor';
+  const endpoint = req.originalUrl;
+  const method = req.method;
 
-        if (!endpoint.includes('/api/system-logs')) {
-          await pool.execute(
-            'INSERT INTO system_logs (user_email, action, method, endpoint, status_code) VALUES (?, ?, ?, ?, ?)',
-            [actor, 'Executed endpoint call', method, endpoint, statusCode]
-          );
-        }
+  // log only after response finished
+  res.on('finish', async () => {
+    const statusCode = res.statusCode;
+    if (!endpoint.includes('/api/system-logs')) {
+      try {
+        await pool.execute(
+          'INSERT INTO system_logs (user_email, action, method, endpoint, status_code) VALUES (?, ?, ?, ?, ?)',
+          [actor, 'Executed endpoint call', method, endpoint, statusCode]
+        );
       } catch (err) {
         console.error('Logging error:', err.message);
       }
-    })();
-    return res.send(body);
-  };
+    }
+  });
   next();
 });
 
@@ -68,13 +64,46 @@ app.get('/api/categories', async (req, res) => {
   }
 });
 
-// API: orders
+// API: orders GET
 app.get('/api/orders', async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT * FROM orders ORDER BY createdAt DESC');
     res.json({ orders: rows });
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch orders' });
+  }
+});
+
+// API: orders POST
+app.post('/api/orders', async (req, res) => {
+  const { items, paymentMethod, orderType, note, deliveryAddress } = req.body;
+
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ message: 'Order must have at least one item' });
+  }
+
+  try {
+    const [result] = await pool.execute(
+      'INSERT INTO orders (payment_method, order_type, note, delivery_address, createdAt) VALUES (?, ?, ?, ?, NOW())',
+      [paymentMethod, orderType, note || '', deliveryAddress || '']
+    );
+    const orderId = result.insertId;
+
+    // insert order items
+    for (const item of items) {
+      await pool.execute(
+        'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)',
+        [orderId, item.productId, item.quantity, item.price]
+      );
+    }
+
+    const [orderRows] = await pool.execute('SELECT * FROM orders WHERE id = ?', [orderId]);
+    const [itemsRows] = await pool.execute('SELECT * FROM order_items WHERE order_id = ?', [orderId]);
+
+    res.json({ order: { ...orderRows[0], items: itemsRows } });
+  } catch (err) {
+    console.error('Failed to save order', err);
+    res.status(500).json({ message: 'Failed to save order' });
   }
 });
 
